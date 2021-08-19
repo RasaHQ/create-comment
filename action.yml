@@ -6,7 +6,10 @@ inputs:
     required: true
   body:
     description: 'Comment to be added to the issue / PR'
-    required: true
+    required: false
+  bodyFilepath:
+    description: 'Path to a file containing comment to be added to the issue / PR'
+    required: false
   github-token:
     description: 'Access token used to add / delete comments'
     required: true
