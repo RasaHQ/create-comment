@@ -1,3 +1,6 @@
+const util = require('util');
+const fs = require('fs');
+
 const core = require('@actions/core');
 const github = require('@actions/github');
 
@@ -8,7 +11,8 @@ const MODE_KEEP_PREVIOUS = "keep-previous";
 async function run() {
   try {
     const id = core.getInput('id', {required: true});
-    const body = core.getInput('body', {required: true});
+    const body = core.getInput('body');
+    const bodyFilepath = core.getInput('bodyFilepath');
     const token = core.getInput('github-token', {required: true});
     const mode = core.getInput('mode', {required: true});
     const issueNumber = core.getInput('issue') || getIssueNumber();
@@ -18,6 +22,11 @@ async function run() {
 
     const marker = '<!-- comment-id:' + id + ' -->';
 
+    const issueBody = await getIssueBody(body, bodyFilepath);
+    if (!issueBody) {
+      console.log('Could not get issue body from either "body" or "bodyFilepath", exiting');
+      return;
+    }
 
     if (!issueNumber) {
       console.log('Could not get pull request number from context, exiting');
@@ -26,11 +35,11 @@ async function run() {
 
     if (mode === MODE_DELETE_PREVIOUS) {
       await deleteExistingComments(marker, octokit, issueNumber, context);
-      await addCommentWithMarker(body, marker, octokit, issueNumber, context);
+      await addCommentWithMarker(issueBody, marker, octokit, issueNumber, context);
     } else if (mode === MODE_KEEP_PREVIOUS) {
-      await addCommentWithMarker(body, marker, octokit, issueNumber, context);
+      await addCommentWithMarker(issueBody, marker, octokit, issueNumber, context);
     } else if (mode === MODE_UPDATE_PREVIOUS) {
-      await replacePreviousComment(body, marker, octokit, issueNumber, context);
+      await replacePreviousComment(issueBody, marker, octokit, issueNumber, context);
     } else {
       core.setFailed('Invalid mode "' + mode + '" specified. Aborting.');
     }
@@ -90,6 +99,16 @@ async function getComments(issueNumber, context, octokit) {
     issue_number: issueNumber
   });
   return await octokit.paginate(opts);
+}
+
+async function getIssueBody(body, filePath) {
+  const issueBody = body;
+  if (await util.promisify(fs.exists)(filePath)) {
+    issueBody = await fs.promises.readFile(filePath, {
+      encoding: 'utf8'
+    });
+  }
+  return issueBody;
 }
 
 function getIssueNumber() {
