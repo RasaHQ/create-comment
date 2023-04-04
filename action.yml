@@ -20,5 +20,5 @@ inputs:
     description: 'Issue / PR the comment should be added to. Defaults to current Issue / PR.'
     required: false
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'dist/index.js'
